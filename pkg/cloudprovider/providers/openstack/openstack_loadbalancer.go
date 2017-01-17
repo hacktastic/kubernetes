@@ -49,6 +49,10 @@ import (
 const loadbalancerActiveTimeoutSeconds = 120
 const loadbalancerDeleteTimeoutSeconds = 30
 
+// svcAnnotationProvider and svcAnnotationSubnetID are service annotations that override their corresponding default (i.e. from cloud-config) settings
+const svcAnnotationProvider = "openstack.lbaas.provider"
+const svcAnnotationSubnetID = "openstack.lbaas.subnet-id"
+
 // LoadBalancer implementation for LBaaS v1
 type LbaasV1 struct {
 	LoadBalancer
@@ -522,6 +526,16 @@ func (lbaas *LbaasV2) createLoadBalancer(service *v1.Service, name string) (*loa
 	loadBalancerIP := service.Spec.LoadBalancerIP
 	if loadBalancerIP != "" {
 		createOpts.VipAddress = loadBalancerIP
+	}
+
+	// if this service has an annotation for "provider," add that Provider string to the Loadbalancer options
+	if lbaas_provider, ok := service.Annotations[svcAnnotationProvider]; ok {
+		createOpts.Provider = lbaas_provider
+	}
+
+	// if this service has an annotation for "subnet-id," add that Provider string to the Loadbalancer options
+	if lbaas_subnet_id, ok := service.Annotations[svcAnnotationSubnetID]; ok {
+		createOpts.VipSubnetID = lbaas_subnet_id
 	}
 
 	loadbalancer, err := loadbalancers.Create(lbaas.network, createOpts).Extract()
