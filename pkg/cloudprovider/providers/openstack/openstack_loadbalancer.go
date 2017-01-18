@@ -19,6 +19,7 @@ package openstack
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,12 +58,13 @@ const ServiceAnnotationLoadBalancerSubnetID = "service.beta.kubernetes.io/openst
 const ServiceAnnotationLoadBalancerFloatingNetworkID = "service.beta.kubernetes.io/openstack-load-balancer-floating-network-id"
 const ServiceAnnotationLoadBalancerLBMethod = "service.beta.kubernetes.io/openstack-load-balancer-lb-method"
 
-//const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/openstack-load-balancer-create-monitor"
+const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/openstack-load-balancer-create-monitor"
+
 //const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/openstack-load-balancer-monitor-delay"
 //const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
 //const ServiceAnnotationLoadBalancerMonitorMaxRetries = "service.beta.kubernetes.io/openstack-load-balancer-monitor-max-retries"
 //const ServiceAnnotationLoadBalancerManageSecurityGroups = "service.beta.kubernetes.io/openstack-load-balancer-manage-security-groups"
-//const ServiceAnnotationLoadBalancerNodeSecurityGroup = "service.beta.kubernetes.io/openstack-load-balancer-node-security-group"
+//const ServiceAnnotationLoadBalancerNodeSecurityGroupID = "service.beta.kubernetes.io/openstack-load-balancer-node-security-group-id"
 
 // LoadBalancer implementation for LBaaS v1
 type LbaasV1 struct {
@@ -539,10 +541,10 @@ func (lbaas *LbaasV2) createLoadBalancer(service *v1.Service, name string) (*loa
 	}
 
 	// if this service has an annotation for provider, add that as Provider arg to the Loadbalancer options
-	createOpts.Provider = lbaas.GetSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerProvider, "")
+	createOpts.Provider = lbaas.getSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerProvider, "")
 
 	// if this service has an annotation for subnet-id, add that as VipSubnetID arg the Loadbalancer options
-	createOpts.VipSubnetID = lbaas.GetSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerSubnetID, lbaas.opts.SubnetId)
+	createOpts.VipSubnetID = lbaas.getSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerSubnetID, lbaas.opts.SubnetId)
 
 	loadbalancer, err := loadbalancers.Create(lbaas.network, createOpts).Extract()
 	if err != nil {
@@ -655,7 +657,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 	waitLoadbalancerActiveProvisioningStatus(lbaas.network, loadbalancer.ID)
 
 	// if this service has an annotation for LB method, use that instead
-	_lbMethod := lbaas.GetSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerLBMethod, lbaas.opts.LBMethod)
+	_lbMethod := lbaas.getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerLBMethod, lbaas.opts.LBMethod)
 
 	lbMethod := v2pools.LBMethod(_lbMethod)
 	if lbMethod == "" {
@@ -757,7 +759,17 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 		}
 
 		monitorID := pool.MonitorID
-		if monitorID == "" && lbaas.opts.CreateMonitor {
+
+		// if this service has an annotation for CreateMonitor, use that instead
+		createMonitorBool := strconv.FormatBool(lbaas.opts.CreateMonitor)
+
+		var createMonitorStr string = lbaas.getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, createMonitorBool)
+		createMonitor, err := strconv.ParseBool(createMonitorStr)
+		if err != nil {
+			glog.Errorf("Encountered an invalid annotation setting for CreateMonitor: %v", createMonitorStr)
+		}
+
+		if monitorID == "" && createMonitor {
 			glog.V(4).Infof("Creating monitor for pool %s", pool.ID)
 			monitor, err := v2monitors.Create(lbaas.network, v2monitors.CreateOpts{
 				PoolID:     pool.ID,
@@ -841,7 +853,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 	}
 
 	// if this service has an annotation for floating network ID, add that as floatingNetworkID arg to the Loadbalancer options
-	floatingNetworkID := lbaas.GetSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerFloatingNetworkID, lbaas.opts.FloatingNetworkId)
+	floatingNetworkID := lbaas.getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerFloatingNetworkID, lbaas.opts.FloatingNetworkId)
 
 	if floatIP == nil && floatingNetworkID != "" {
 		glog.V(4).Infof("Creating floating ip for loadbalancer %s port %s", loadbalancer.ID, port.ID)
@@ -1136,7 +1148,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancerDeleted(clusterName string, service *v1.
 	}
 
 	// if this service has an annotation for floating network ID, use that instead of the default
-	floatingNetworkID := lbaas.GetSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerFloatingNetworkID, lbaas.opts.FloatingNetworkId)
+	floatingNetworkID := lbaas.getSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerFloatingNetworkID, lbaas.opts.FloatingNetworkId)
 
 	if floatingNetworkID != "" && loadbalancer != nil {
 		port, err := getPortByIP(lbaas.network, loadbalancer.VipAddress)
@@ -1603,9 +1615,9 @@ func (lb *LbaasV1) EnsureLoadBalancerDeleted(clusterName string, service *v1.Ser
 	return nil
 }
 
-//GetSettingFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
-func (lbaas *LbaasV2) GetSettingFromServiceAnnotation(service *v1.Service, annotationKey, defaultSetting string) string {
-	glog.V(4).Infof("GetSettingFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
+//getSettingFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
+func (lbaas *LbaasV2) getSettingFromServiceAnnotation(service *v1.Service, annotationKey, defaultSetting string) string {
+	glog.V(4).Infof("getSettingFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
 	setting := defaultSetting
 
 	if _setting, ok := service.Annotations[annotationKey]; ok {
