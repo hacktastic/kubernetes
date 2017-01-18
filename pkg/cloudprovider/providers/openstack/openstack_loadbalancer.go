@@ -653,19 +653,6 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 
 	waitLoadbalancerActiveProvisioningStatus(lbaas.network, loadbalancer.ID)
 
-	/*
-		//lbMethod is set by config or annotation, with the latter taking priority
-		var lbMethod string
-
-		if _lbMethod, ok := apiService.Annotations[ServiceAnnotationLoadBalancerLBMethod]; ok {
-			//if there is an annotation for the LB Method, set lbMethod to it
-			lbMethod = _lbMethod
-		} else {
-			//if there is no annotation, set lbMethod to cloud config setting
-			lbMethod = lbaas.opts.LBMethod
-		}
-	*/
-
 	// if this service has an annotation for LB method, use that instead
 	_lbMethod := lbaas.GetSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerLBMethod, lbaas.opts.LBMethod)
 
