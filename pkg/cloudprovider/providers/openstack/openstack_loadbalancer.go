@@ -56,6 +56,7 @@ const ServiceAnnotationLoadBalancerSubnetID = "service.beta.kubernetes.io/openst
 //const ServiceAnnotationLoadBalancerLBVersion = 						"service.beta.kubernetes.io/openstack-load-balancer-lb-version"
 const ServiceAnnotationLoadBalancerFloatingNetworkID = "service.beta.kubernetes.io/openstack-load-balancer-floating-network-id"
 const ServiceAnnotationLoadBalancerLBMethod = "service.beta.kubernetes.io/openstack-load-balancer-lb-method"
+
 //const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/openstack-load-balancer-create-monitor"
 //const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/openstack-load-balancer-monitor-delay"
 //const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
@@ -529,7 +530,7 @@ func createNodeSecurityGroup(client *gophercloud.ServiceClient, nodeSecurityGrou
 func (lbaas *LbaasV2) createLoadBalancer(service *v1.Service, name string) (*loadbalancers.LoadBalancer, error) {
 	createOpts := loadbalancers.CreateOpts{
 		Name:        name,
-		Description: fmt.Sprintf("Kubernetes external service %s", name)
+		Description: fmt.Sprintf("Kubernetes external service %s", name),
 	}
 
 	loadBalancerIP := service.Spec.LoadBalancerIP
@@ -654,7 +655,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 	waitLoadbalancerActiveProvisioningStatus(lbaas.network, loadbalancer.ID)
 
 	// if this service has an annotation for LB method, use that instead
-	_lbMethod := lbaas.GetSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerLBMethod, lbaas.opts.LBMethod)
+	_lbMethod := lbaas.GetSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerLBMethod, lbaas.opts.LBMethod)
 
 	lbMethod := v2pools.LBMethod(_lbMethod)
 	if lbMethod == "" {
@@ -840,7 +841,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 	}
 
 	// if this service has an annotation for floating network ID, add that as floatingNetworkID arg to the Loadbalancer options
-	floatingNetworkID := lbaas.GetSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerFloatingNetworkID, lbaas.opts.FloatingNetworkId)
+	floatingNetworkID := lbaas.GetSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerFloatingNetworkID, lbaas.opts.FloatingNetworkId)
 
 	if floatIP == nil && floatingNetworkID != "" {
 		glog.V(4).Infof("Creating floating ip for loadbalancer %s port %s", loadbalancer.ID, port.ID)
