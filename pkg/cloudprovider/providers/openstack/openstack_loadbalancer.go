@@ -57,17 +57,12 @@ const ServiceAnnotationLoadBalancerSubnetID = "service.beta.kubernetes.io/openst
 //const ServiceAnnotationLoadBalancerLBVersion = 						"service.beta.kubernetes.io/openstack-load-balancer-lb-version"
 const ServiceAnnotationLoadBalancerFloatingNetworkID = "service.beta.kubernetes.io/openstack-load-balancer-floating-network-id"
 const ServiceAnnotationLoadBalancerLBMethod = "service.beta.kubernetes.io/openstack-load-balancer-lb-method"
-
 const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/openstack-load-balancer-create-monitor"
-
 const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/openstack-load-balancer-monitor-delay"
-
 const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
-
 const ServiceAnnotationLoadBalancerMonitorMaxRetries = "service.beta.kubernetes.io/openstack-load-balancer-monitor-max-retries"
 const ServiceAnnotationLoadBalancerManageSecurityGroups = "service.beta.kubernetes.io/openstack-load-balancer-manage-security-groups"
-
-//const ServiceAnnotationLoadBalancerNodeSecurityGroupID = "service.beta.kubernetes.io/openstack-load-balancer-node-security-group-id"
+const ServiceAnnotationLoadBalancerNodeSecurityGroupID = "service.beta.kubernetes.io/openstack-load-balancer-node-security-group-id"
 
 // LoadBalancer implementation for LBaaS v1
 type LbaasV1 struct {
@@ -960,8 +955,8 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 					return nil, err
 				}
 			}
-
-			err := createNodeSecurityGroup(lbaas.network, lbaas.opts.NodeSecurityGroupID, int(port.NodePort), string(port.Protocol), lbSecGroup.ID)
+			nodeSecurityGroupID := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerNodeSecurityGroupID, lbaas.opts.NodeSecurityGroupID)
+			err := createNodeSecurityGroup(lbaas.network, nodeSecurityGroupID, int(port.NodePort), string(port.Protocol), lbSecGroup.ID)
 			if err != nil {
 				glog.Errorf("Error occured creating security group for loadbalancer %s:", loadbalancer.ID)
 				_ = lbaas.EnsureLoadBalancerDeleted(clusterName, apiService)
@@ -1336,15 +1331,17 @@ func (lbaas *LbaasV2) EnsureLoadBalancerDeleted(clusterName string, service *v1.
 			return lbSecGroup.Err
 		}
 
+		nodeSecurityGroupID := getSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerNodeSecurityGroupID, lbaas.opts.NodeSecurityGroupID)
+
 		// Delete the rules in the Node Security Group
 		opts := rules.ListOpts{
-			SecGroupID:    lbaas.opts.NodeSecurityGroupID,
+			SecGroupID:    nodeSecurityGroupID,
 			RemoteGroupID: lbSecGroupID,
 		}
 		secGroupRules, err := getSecurityGroupRules(lbaas.network, opts)
 
 		if err != nil && !isNotFound(err) {
-			glog.Errorf("Error finding rules for remote group id %s in security group id %s", lbSecGroupID, lbaas.opts.NodeSecurityGroupID)
+			glog.Errorf("Error finding rules for remote group id %s in security group id %s", lbSecGroupID, nodeSecurityGroupID)
 			return err
 		}
 
