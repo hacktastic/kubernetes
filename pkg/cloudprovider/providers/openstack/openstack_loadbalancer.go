@@ -1444,8 +1444,8 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 	// if this service has an annotation for LB method, use that instead
 	lbMethod := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerLBMethod, lb.opts.LBMethod)
 
-	if lbmethod == "" {
-		lbmethod = pools.LBMethodRoundRobin
+	if lbMethod == "" {
+		lbMethod = pools.LBMethodRoundRobin
 	}
 	name := cloudprovider.GetLoadBalancerName(apiService)
 	subnetID := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerSubnetID, lb.opts.SubnetId)
@@ -1453,7 +1453,7 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 		Name:     name,
 		Protocol: pools.ProtocolTCP,
 		SubnetID: subnetID,
-		LBMethod: lbmethod,
+		LBMethod: lbMethod,
 	}).Extract()
 	if err != nil {
 		return nil, err
@@ -1655,7 +1655,7 @@ func (lb *LbaasV1) EnsureLoadBalancerDeleted(clusterName string, service *v1.Ser
 	}
 
 	// if this service has an annotation for floating network ID, add that as floatingNetworkID arg to the Loadbalancer options
-	floatingNetworkID := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerFloatingNetworkID, lb.opts.FloatingNetworkId)
+	floatingNetworkID := getSettingFromServiceAnnotation(service, ServiceAnnotationLoadBalancerFloatingNetworkID, lb.opts.FloatingNetworkId)
 
 	if floatingNetworkID != "" && vip != nil {
 		floatingIP, err := getFloatingIPByPortID(lb.network, vip.PortID)
