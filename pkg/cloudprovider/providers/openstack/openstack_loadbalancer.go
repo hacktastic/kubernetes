@@ -62,7 +62,8 @@ const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/o
 
 const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/openstack-load-balancer-monitor-delay"
 
-//const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
+const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
+
 //const ServiceAnnotationLoadBalancerMonitorMaxRetries = "service.beta.kubernetes.io/openstack-load-balancer-monitor-max-retries"
 const ServiceAnnotationLoadBalancerManageSecurityGroups = "service.beta.kubernetes.io/openstack-load-balancer-manage-security-groups"
 
@@ -791,13 +792,24 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 			monitorDelay = dur.Seconds()
 		}
 
+		// if this service has an annotation for MonitorTimeout, use that instead
+		monitorTimeout := lbaas.opts.MonitorTimeout.Seconds()
+
+		if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorTimeout]; ok {
+			timeout, err := time.ParseDuration(string(override))
+			if err != nil {
+				glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
+			}
+			monitorTimeout = timeout.Seconds()
+		}
+
 		if monitorID == "" && createMonitor {
 			glog.V(4).Infof("Creating monitor for pool %s", pool.ID)
 			monitor, err := v2monitors.Create(lbaas.network, v2monitors.CreateOpts{
 				PoolID:     pool.ID,
 				Type:       string(port.Protocol),
 				Delay:      int(monitorDelay),
-				Timeout:    int(lbaas.opts.MonitorTimeout.Duration.Seconds()),
+				Timeout:    int(monitorTimeout),
 				MaxRetries: int(lbaas.opts.MonitorMaxRetries),
 			}).Extract()
 			if err != nil {
