@@ -53,8 +53,6 @@ const loadbalancerDeleteTimeoutSeconds = 30
 // svcAnnotationProvider and svcAnnotationSubnetID are service annotations that override their corresponding default (i.e. from cloud-config) settings
 const ServiceAnnotationLoadBalancerProvider = "service.beta.kubernetes.io/openstack-load-balancer-provider"
 const ServiceAnnotationLoadBalancerSubnetID = "service.beta.kubernetes.io/openstack-load-balancer-subnet-id"
-
-//const ServiceAnnotationLoadBalancerLBVersion = 						"service.beta.kubernetes.io/openstack-load-balancer-lb-version"
 const ServiceAnnotationLoadBalancerFloatingNetworkID = "service.beta.kubernetes.io/openstack-load-balancer-floating-network-id"
 const ServiceAnnotationLoadBalancerLBMethod = "service.beta.kubernetes.io/openstack-load-balancer-lb-method"
 const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/openstack-load-balancer-create-monitor"
@@ -527,6 +525,22 @@ func createNodeSecurityGroup(client *gophercloud.ServiceClient, nodeSecurityGrou
 	return nil
 }
 
+//getSettingFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
+func getSettingFromServiceAnnotation(service *v1.Service, annotationKey, defaultSetting string) string {
+	glog.V(4).Infof("getSettingFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
+	setting := defaultSetting
+
+	if _setting, ok := service.Annotations[annotationKey]; ok {
+		//if there is an annotation for this setting, set the "setting" var to it
+		glog.V(4).Infof("Found a Service Annotation: %v = %v", annotationKey, _setting)
+		setting = _setting
+		return setting
+	}
+	//if there is no annotation, set "settings" var to the value from cloud config
+	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, setting)
+	return setting
+}
+
 func (lbaas *LbaasV2) createLoadBalancer(service *v1.Service, name string) (*loadbalancers.LoadBalancer, error) {
 	createOpts := loadbalancers.CreateOpts{
 		Name:        name,
@@ -623,7 +637,6 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 
 	// if this service has an annotation for ManageSecurityGroups, use that instead
 	manageSecurityGroupsBool := strconv.FormatBool(lbaas.opts.ManageSecurityGroups)
-
 	var manageSecurityGroupsStr string = getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerManageSecurityGroups, manageSecurityGroupsBool)
 	manageSecurityGroups, err := strconv.ParseBool(manageSecurityGroupsStr)
 	if err != nil {
@@ -1428,15 +1441,18 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 		}
 	}
 
-	lbmethod := lb.opts.LBMethod
+	// if this service has an annotation for LB method, use that instead
+	lbMethod := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerLBMethod, lb.opts.LBMethod)
+
 	if lbmethod == "" {
 		lbmethod = pools.LBMethodRoundRobin
 	}
 	name := cloudprovider.GetLoadBalancerName(apiService)
+	subnetID := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerSubnetID, lb.opts.SubnetId)
 	pool, err := pools.Create(lb.network, pools.CreateOpts{
 		Name:     name,
 		Protocol: pools.ProtocolTCP,
-		SubnetID: lb.opts.SubnetId,
+		SubnetID: subnetID,
 		LBMethod: lbmethod,
 	}).Extract()
 	if err != nil {
@@ -1460,13 +1476,51 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 		}
 	}
 
+	// if this service has an annotation for CreateMonitor, use that instead
+	createMonitorBool := strconv.FormatBool(lb.opts.CreateMonitor)
+
+	var createMonitorStr string = getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, createMonitorBool)
+	createMonitor, err := strconv.ParseBool(createMonitorStr)
+	if err != nil {
+		glog.Errorf("Encountered an invalid annotation setting for CreateMonitor %v: %v", createMonitorStr, err)
+	}
+
+	// if this service has an annotation for MonitorDelay, use that instead
+	monitorDelay := lb.opts.MonitorDelay.Seconds()
+
+	if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorDelay]; ok {
+		dur, err := time.ParseDuration(string(override))
+		if err != nil {
+			glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
+		}
+		monitorDelay = dur.Seconds()
+	}
+
+	// if this service has an annotation for MonitorTimeout, use that instead
+	monitorTimeout := lb.opts.MonitorTimeout.Seconds()
+
+	if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorTimeout]; ok {
+		timeout, err := time.ParseDuration(string(override))
+		if err != nil {
+			glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
+		}
+		monitorTimeout = timeout.Seconds()
+	}
+
+	// if this service has an annotation for MonitorMaxRetries, use that instead
+	_monitorMaxRetries := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorMaxRetries, strconv.FormatUint(uint64(lb.opts.MonitorMaxRetries), 10))
+	monitorMaxRetries, err := strconv.ParseInt(_monitorMaxRetries, 10, 64)
+	if err != nil {
+		glog.Errorf("Failed to parse MonitorMaxRetries service annotation: %v; %v", _monitorMaxRetries, err)
+	}
+
 	var mon *monitors.Monitor
-	if lb.opts.CreateMonitor {
+	if createMonitor {
 		mon, err = monitors.Create(lb.network, monitors.CreateOpts{
 			Type:       monitors.TypeTCP,
-			Delay:      int(lb.opts.MonitorDelay.Duration.Seconds()),
-			Timeout:    int(lb.opts.MonitorTimeout.Duration.Seconds()),
-			MaxRetries: int(lb.opts.MonitorMaxRetries),
+			Delay:      int(monitorDelay),
+			Timeout:    int(monitorTimeout),
+			MaxRetries: int(monitorMaxRetries),
 		}).Extract()
 		if err != nil {
 			pools.Delete(lb.network, pool.ID)
@@ -1487,7 +1541,7 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 		Protocol:     "TCP",
 		ProtocolPort: int(ports[0].Port), //TODO: need to handle multi-port
 		PoolID:       pool.ID,
-		SubnetID:     lb.opts.SubnetId,
+		SubnetID:     subnetID,
 		Persistence:  persistence,
 	}
 
@@ -1509,9 +1563,12 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 
 	status.Ingress = []v1.LoadBalancerIngress{{IP: vip.Address}}
 
-	if lb.opts.FloatingNetworkId != "" {
+	// if this service has an annotation for floating network ID, add that as floatingNetworkID arg to the Loadbalancer options
+	floatingNetworkID := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerFloatingNetworkID, lb.opts.FloatingNetworkId)
+
+	if floatingNetworkID != "" {
 		floatIPOpts := floatingips.CreateOpts{
-			FloatingNetworkID: lb.opts.FloatingNetworkId,
+			FloatingNetworkID: floatingNetworkID,
 			PortID:            vip.PortID,
 		}
 		floatIP, err := floatingips.Create(lb.network, floatIPOpts).Extract()
@@ -1597,7 +1654,10 @@ func (lb *LbaasV1) EnsureLoadBalancerDeleted(clusterName string, service *v1.Ser
 		return err
 	}
 
-	if lb.opts.FloatingNetworkId != "" && vip != nil {
+	// if this service has an annotation for floating network ID, add that as floatingNetworkID arg to the Loadbalancer options
+	floatingNetworkID := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerFloatingNetworkID, lb.opts.FloatingNetworkId)
+
+	if floatingNetworkID != "" && vip != nil {
 		floatingIP, err := getFloatingIPByPortID(lb.network, vip.PortID)
 		if err != nil && !isNotFound(err) {
 			return err
@@ -1661,20 +1721,4 @@ func (lb *LbaasV1) EnsureLoadBalancerDeleted(clusterName string, service *v1.Ser
 	}
 
 	return nil
-}
-
-//getSettingFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
-func getSettingFromServiceAnnotation(service *v1.Service, annotationKey, defaultSetting string) string {
-	glog.V(4).Infof("getSettingFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
-	setting := defaultSetting
-
-	if _setting, ok := service.Annotations[annotationKey]; ok {
-		//if there is an annotation for this setting, set the "setting" var to it
-		glog.V(4).Infof("Found a Service Annotation: %v = %v", annotationKey, _setting)
-		setting = _setting
-		return setting
-	}
-	//if there is no annotation, set "settings" var to the value from cloud config
-	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, setting)
-	return setting
 }
