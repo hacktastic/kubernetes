@@ -60,7 +60,8 @@ const ServiceAnnotationLoadBalancerLBMethod = "service.beta.kubernetes.io/openst
 
 const ServiceAnnotationLoadBalancerCreateMonitor = "service.beta.kubernetes.io/openstack-load-balancer-create-monitor"
 
-//const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/openstack-load-balancer-monitor-delay"
+const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/openstack-load-balancer-monitor-delay"
+
 //const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
 //const ServiceAnnotationLoadBalancerMonitorMaxRetries = "service.beta.kubernetes.io/openstack-load-balancer-monitor-max-retries"
 const ServiceAnnotationLoadBalancerManageSecurityGroups = "service.beta.kubernetes.io/openstack-load-balancer-manage-security-groups"
@@ -776,7 +777,20 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 		var createMonitorStr string = getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, createMonitorBool)
 		createMonitor, err := strconv.ParseBool(createMonitorStr)
 		if err != nil {
-			glog.Errorf("Encountered an invalid annotation setting for CreateMonitor: %v", createMonitorStr)
+			glog.Errorf("Encountered an invalid annotation setting for CreateMonitor %v: %v", createMonitorStr, err)
+		}
+
+		// if this service has an annotation for MonitorDelay, use that instead
+		monitorDelay, err := lbaas.opts.MonitorDelay.Seconds()
+		if err != nil {
+			glog.Errorf("Failed to convert default monitorDelay to string: %v", err)
+		}
+		if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorDelay]; ok {
+			dur, err := time.ParseDuration(string(override))
+			if err != nil {
+				glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
+			}
+			monitorDelay = dur.Seconds()
 		}
 
 		if monitorID == "" && createMonitor {
@@ -784,7 +798,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 			monitor, err := v2monitors.Create(lbaas.network, v2monitors.CreateOpts{
 				PoolID:     pool.ID,
 				Type:       string(port.Protocol),
-				Delay:      int(lbaas.opts.MonitorDelay.Duration.Seconds()),
+				Delay:      int(monitorDelay),
 				Timeout:    int(lbaas.opts.MonitorTimeout.Duration.Seconds()),
 				MaxRetries: int(lbaas.opts.MonitorMaxRetries),
 			}).Extract()
