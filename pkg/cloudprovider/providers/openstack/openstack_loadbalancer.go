@@ -804,7 +804,11 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 		}
 
 		// if this service has an annotation for MonitorMaxRetries, use that instead
-		monitorMaxRetries := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorMaxRetries, strconv.Itoa(lbaas.opts.MonitorMaxRetries))
+		_monitorMaxRetries := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorMaxRetries, strconv.FormatUint(uint64(lbaas.opts.MonitorMaxRetries), 10))
+		monitorMaxRetries, err := strconv.ParseInt(_monitorMaxRetries, 10, 64)
+		if err != nil {
+			glog.Errorf("Failed to parse MonitorMaxRetries service annotation: %v; %v", _monitorMaxRetries, err)
+		}
 
 		if monitorID == "" && createMonitor {
 			glog.V(4).Infof("Creating monitor for pool %s", pool.ID)
