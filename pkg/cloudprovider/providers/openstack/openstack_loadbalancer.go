@@ -64,7 +64,7 @@ const ServiceAnnotationLoadBalancerMonitorDelay = "service.beta.kubernetes.io/op
 
 const ServiceAnnotationLoadBalancerMonitorTimeout = "service.beta.kubernetes.io/openstack-load-balancer-monitor-timeout"
 
-//const ServiceAnnotationLoadBalancerMonitorMaxRetries = "service.beta.kubernetes.io/openstack-load-balancer-monitor-max-retries"
+const ServiceAnnotationLoadBalancerMonitorMaxRetries = "service.beta.kubernetes.io/openstack-load-balancer-monitor-max-retries"
 const ServiceAnnotationLoadBalancerManageSecurityGroups = "service.beta.kubernetes.io/openstack-load-balancer-manage-security-groups"
 
 //const ServiceAnnotationLoadBalancerNodeSecurityGroupID = "service.beta.kubernetes.io/openstack-load-balancer-node-security-group-id"
@@ -803,6 +803,9 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 			monitorTimeout = timeout.Seconds()
 		}
 
+		// if this service has an annotation for MonitorMaxRetries, use that instead
+		monitorMaxRetries := getSettingFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorMaxRetries, strconv.Itoa(lbaas.opts.MonitorMaxRetries))
+
 		if monitorID == "" && createMonitor {
 			glog.V(4).Infof("Creating monitor for pool %s", pool.ID)
 			monitor, err := v2monitors.Create(lbaas.network, v2monitors.CreateOpts{
@@ -810,7 +813,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 				Type:       string(port.Protocol),
 				Delay:      int(monitorDelay),
 				Timeout:    int(monitorTimeout),
-				MaxRetries: int(lbaas.opts.MonitorMaxRetries),
+				MaxRetries: int(monitorMaxRetries),
 			}).Extract()
 			if err != nil {
 				return nil, fmt.Errorf("Error creating LB pool healthmonitor: %v", err)
