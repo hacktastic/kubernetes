@@ -781,10 +781,8 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 		}
 
 		// if this service has an annotation for MonitorDelay, use that instead
-		monitorDelay, err := lbaas.opts.MonitorDelay.Seconds()
-		if err != nil {
-			glog.Errorf("Failed to convert default monitorDelay to string: %v", err)
-		}
+		monitorDelay := lbaas.opts.MonitorDelay.Seconds()
+
 		if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorDelay]; ok {
 			dur, err := time.ParseDuration(string(override))
 			if err != nil {
