@@ -23,7 +23,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/gofuzz"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -38,10 +41,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/policy"
 	"k8s.io/kubernetes/pkg/apis/rbac"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/util/intstr"
-
-	"github.com/google/gofuzz"
 )
 
 // FuzzerFor can randomly populate api objects that are destined for version.
@@ -77,7 +77,7 @@ func FuzzerFor(t *testing.T, version schema.GroupVersion, src rand.Source) *fuzz
 			j.APIVersion = ""
 			j.Kind = ""
 		},
-		func(j *api.ObjectMeta, c fuzz.Continue) {
+		func(j *metav1.ObjectMeta, c fuzz.Continue) {
 			j.Name = c.RandString()
 			j.ResourceVersion = strconv.FormatUint(c.RandUint64(), 10)
 			j.SelfLink = c.RandString()
@@ -133,6 +133,9 @@ func FuzzerFor(t *testing.T, version schema.GroupVersion, src rand.Source) *fuzz
 			}
 			if s.Affinity == nil {
 				s.Affinity = new(api.Affinity)
+			}
+			if s.SchedulerName == "" {
+				s.SchedulerName = api.DefaultSchedulerName
 			}
 		},
 		func(j *api.PodPhase, c fuzz.Continue) {
@@ -383,10 +386,15 @@ func FuzzerFor(t *testing.T, version schema.GroupVersion, src rand.Source) *fuzz
 			}
 			if c.RandBool() {
 				c.Fuzz(&ev.ConfigMapRef)
+			} else {
+				c.Fuzz(&ev.SecretRef)
 			}
 		},
 		func(cm *api.ConfigMapEnvSource, c fuzz.Continue) {
 			c.FuzzNoCustom(cm) // fuzz self without calling this function again
+		},
+		func(s *api.SecretEnvSource, c fuzz.Continue) {
+			c.FuzzNoCustom(s) // fuzz self without calling this function again
 		},
 		func(sc *api.SecurityContext, c fuzz.Continue) {
 			c.FuzzNoCustom(sc) // fuzz self without calling this function again
@@ -562,6 +570,7 @@ func FuzzerFor(t *testing.T, version schema.GroupVersion, src rand.Source) *fuzz
 			obj.API.Port = 20
 			obj.Networking.ServiceSubnet = "foo"
 			obj.Networking.DNSDomain = "foo"
+			obj.AuthorizationMode = "foo"
 			obj.Discovery.Token = &kubeadm.TokenDiscovery{}
 		},
 		func(s *policy.PodDisruptionBudgetStatus, c fuzz.Continue) {

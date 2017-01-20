@@ -180,7 +180,7 @@ func getTestCases(hostname types.NodeName) []*testCase {
 					Kind:       "Pod",
 					APIVersion: "",
 				},
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					UID:       "12345",
 					Namespace: "mynamespace",
@@ -188,13 +188,14 @@ func getTestCases(hostname types.NodeName) []*testCase {
 				Spec: v1.PodSpec{
 					Containers:      []v1.Container{{Name: "image", Image: "test/image", SecurityContext: securitycontext.ValidSecurityContextWithContainerDefaults()}},
 					SecurityContext: &v1.PodSecurityContext{},
+					SchedulerName:   api.DefaultSchedulerName,
 				},
 				Status: v1.PodStatus{
 					Phase: v1.PodPending,
 				},
 			},
 			expected: CreatePodUpdate(kubetypes.SET, kubetypes.FileSource, &v1.Pod{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:        "test-" + string(hostname),
 					UID:         "12345",
 					Namespace:   "mynamespace",
@@ -213,6 +214,7 @@ func getTestCases(hostname types.NodeName) []*testCase {
 						ImagePullPolicy:        "Always",
 						SecurityContext:        securitycontext.ValidSecurityContextWithContainerDefaults()}},
 					SecurityContext: &v1.PodSecurityContext{},
+					SchedulerName:   api.DefaultSchedulerName,
 				},
 				Status: v1.PodStatus{
 					Phase: v1.PodPending,

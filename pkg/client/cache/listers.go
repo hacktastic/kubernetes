@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
-	certificates "k8s.io/kubernetes/pkg/apis/certificates/v1alpha1"
+	certificates "k8s.io/kubernetes/pkg/apis/certificates/v1beta1"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	policy "k8s.io/kubernetes/pkg/apis/policy/v1beta1"
 	storageinternal "k8s.io/kubernetes/pkg/apis/storage"
@@ -65,7 +65,7 @@ func ListAllByNamespace(indexer Indexer, namespace string, selector labels.Selec
 		return nil
 	}
 
-	items, err := indexer.Index(NamespaceIndex, &v1.ObjectMeta{Namespace: namespace})
+	items, err := indexer.Index(NamespaceIndex, &metav1.ObjectMeta{Namespace: namespace})
 	if err != nil {
 		// Ignore error; do slow search without index.
 		glog.Warningf("can not retrieve list of objects using index : %v", err)
@@ -302,7 +302,7 @@ type StoreToPVFetcher struct {
 
 // GetPersistentVolumeInfo returns cached data for the PersistentVolume 'id'.
 func (s *StoreToPVFetcher) GetPersistentVolumeInfo(id string) (*v1.PersistentVolume, error) {
-	o, exists, err := s.Get(&v1.PersistentVolume{ObjectMeta: v1.ObjectMeta{Name: id}})
+	o, exists, err := s.Get(&v1.PersistentVolume{ObjectMeta: metav1.ObjectMeta{Name: id}})
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving PersistentVolume '%v' from cache: %v", id, err)
@@ -468,7 +468,7 @@ func (s *storageClassLister) List(selector labels.Selector) (ret []*storage.Stor
 
 // Get returns storage class with name 'name'.
 func (s *storageClassLister) Get(name string) (*storage.StorageClass, error) {
-	key := &storage.StorageClass{ObjectMeta: v1.ObjectMeta{Name: name}}
+	key := &storage.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: name}}
 	obj, exists, err := s.indexer.Get(key)
 	if err != nil {
 		return nil, err

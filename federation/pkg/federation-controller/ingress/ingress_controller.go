@@ -22,10 +22,12 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	pkgruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/pkg/util/flowcontrol"
 	federationapi "k8s.io/kubernetes/federation/apis/federation/v1beta1"
 	federationclientset "k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
 	"k8s.io/kubernetes/federation/pkg/federation-controller/util"
@@ -38,7 +40,6 @@ import (
 	kubeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
 
 	"github.com/golang/glog"
 )
@@ -764,9 +765,9 @@ func (ic *IngressController) reconcileIngress(ingress types.NamespacedName) {
 		if err != nil {
 			glog.Errorf("Error deep copying Spec: %v", err)
 		}
-		objMetaCopy, ok := objMeta.(*v1.ObjectMeta)
+		objMetaCopy, ok := objMeta.(*metav1.ObjectMeta)
 		if !ok {
-			glog.Errorf("Internal error: Failed to cast to *v1.ObjectMeta: %v", objMeta)
+			glog.Errorf("Internal error: Failed to cast to *metav1.ObjectMeta: %v", objMeta)
 		}
 		desiredIngress.ObjectMeta = *objMetaCopy
 		objSpecCopy, ok := objSpec.(*extensionsv1beta1.IngressSpec)
@@ -857,9 +858,9 @@ func (ic *IngressController) reconcileIngress(ingress types.NamespacedName) {
 					glog.Errorf("Error deep copying ObjectMeta: %v", err)
 					ic.deliverIngress(ingress, ic.ingressReviewDelay, true)
 				}
-				objMetaCopy, ok := objMeta.(*v1.ObjectMeta)
+				objMetaCopy, ok := objMeta.(*metav1.ObjectMeta)
 				if !ok {
-					glog.Errorf("Internal error: Failed to cast to v1.ObjectMeta: %v", objMeta)
+					glog.Errorf("Internal error: Failed to cast to metav1.ObjectMeta: %v", objMeta)
 					ic.deliverIngress(ingress, ic.ingressReviewDelay, true)
 				}
 				desiredIngress.ObjectMeta = *objMetaCopy

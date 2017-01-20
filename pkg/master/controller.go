@@ -30,7 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/endpoints"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
-	"k8s.io/kubernetes/pkg/genericapiserver"
+	genericapiserver "k8s.io/kubernetes/pkg/genericapiserver/server"
 	"k8s.io/kubernetes/pkg/registry/core/rangeallocation"
 	corerest "k8s.io/kubernetes/pkg/registry/core/rest"
 	servicecontroller "k8s.io/kubernetes/pkg/registry/core/service/ipallocator/controller"
@@ -191,7 +191,7 @@ func (c *Controller) CreateNamespaceIfNeeded(ns string) error {
 		return nil
 	}
 	newNs := &api.Namespace{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      ns,
 			Namespace: "",
 		},
@@ -250,7 +250,7 @@ func (c *Controller) CreateOrUpdateMasterServiceIfNeeded(serviceName string, ser
 		return nil
 	}
 	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName,
 			Namespace: api.NamespaceDefault,
 			Labels:    map[string]string{"provider": "kubernetes", "component": "apiserver"},
@@ -321,7 +321,7 @@ func (r *masterCountEndpointReconciler) ReconcileEndpoints(serviceName string, i
 	e, err := r.endpointClient.Endpoints(api.NamespaceDefault).Get(serviceName, metav1.GetOptions{})
 	if err != nil {
 		e = &api.Endpoints{
-			ObjectMeta: api.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceName,
 				Namespace: api.NamespaceDefault,
 			},

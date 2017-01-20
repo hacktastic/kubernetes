@@ -24,6 +24,7 @@ import (
 	"github.com/golang/glog"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -36,7 +37,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	clientretry "k8s.io/kubernetes/pkg/client/retry"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/registry/core/secret"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 	"k8s.io/kubernetes/pkg/util/metrics"
@@ -258,7 +258,7 @@ func (e *TokensController) syncServiceAccount() {
 	case sa == nil:
 		// service account no longer exists, so delete related tokens
 		glog.V(4).Infof("syncServiceAccount(%s/%s), service account deleted, removing tokens", saInfo.namespace, saInfo.name)
-		sa = &v1.ServiceAccount{ObjectMeta: v1.ObjectMeta{Namespace: saInfo.namespace, Name: saInfo.name, UID: saInfo.uid}}
+		sa = &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: saInfo.namespace, Name: saInfo.name, UID: saInfo.uid}}
 		if retriable, err := e.deleteTokens(sa); err != nil {
 			glog.Errorf("error deleting serviceaccount tokens for %s/%s: %v", saInfo.namespace, saInfo.name, err)
 			retry = retriable
@@ -399,7 +399,7 @@ func (e *TokensController) ensureReferencedToken(serviceAccount *v1.ServiceAccou
 
 	// Build the secret
 	secret := &v1.Secret{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.Strategy.GenerateName(fmt.Sprintf("%s-token-", serviceAccount.Name)),
 			Namespace: serviceAccount.Namespace,
 			Annotations: map[string]string{

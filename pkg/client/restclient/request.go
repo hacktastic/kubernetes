@@ -35,6 +35,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -42,12 +43,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/pkg/util/flowcontrol"
+	restclientwatch "k8s.io/client-go/rest/watch"
 	"k8s.io/kubernetes/pkg/api/v1"
 	pathvalidation "k8s.io/kubernetes/pkg/api/validation/path"
 	"k8s.io/kubernetes/pkg/client/metrics"
-	restclientwatch "k8s.io/kubernetes/pkg/client/restclient/watch"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
 )
 
 var (
@@ -760,10 +760,11 @@ func (r *Request) Stream() (io.ReadCloser, error) {
 		defer resp.Body.Close()
 
 		result := r.transformResponse(resp, req)
-		if result.err != nil {
-			return nil, result.err
+		err := result.Error()
+		if err == nil {
+			err = fmt.Errorf("%d while accessing %v: %s", result.statusCode, url, string(result.body))
 		}
-		return nil, fmt.Errorf("%d while accessing %v: %s", result.statusCode, url, string(result.body))
+		return nil, err
 	}
 }
 

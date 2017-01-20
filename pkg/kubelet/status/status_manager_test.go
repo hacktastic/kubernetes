@@ -38,13 +38,14 @@ import (
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	kubepod "k8s.io/kubernetes/pkg/kubelet/pod"
 	podtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
+	kubesecret "k8s.io/kubernetes/pkg/kubelet/secret"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
 // Generate new instance of test pod with the same initial value.
 func getTestPod() *v1.Pod {
 	return &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
@@ -71,7 +72,7 @@ func (m *manager) testSyncBatch() {
 }
 
 func newTestManager(kubeClient clientset.Interface) *manager {
-	podManager := kubepod.NewBasicPodManager(podtest.NewFakeMirrorClient())
+	podManager := kubepod.NewBasicPodManager(podtest.NewFakeMirrorClient(), kubesecret.NewFakeManager())
 	podManager.AddPod(getTestPod())
 	return NewManager(kubeClient, podManager).(*manager)
 }
@@ -138,7 +139,7 @@ func TestNewStatus(t *testing.T) {
 func TestNewStatusPreservesPodStartTime(t *testing.T) {
 	syncer := newTestManager(&fake.Clientset{})
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
@@ -171,7 +172,7 @@ func TestNewStatusSetsReadyTransitionTime(t *testing.T) {
 	syncer := newTestManager(&fake.Clientset{})
 	podStatus := getReadyPodStatus()
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
@@ -218,7 +219,7 @@ func TestChangedStatusUpdatesLastTransitionTime(t *testing.T) {
 	syncer := newTestManager(&fake.Clientset{})
 	podStatus := getReadyPodStatus()
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",
@@ -257,7 +258,7 @@ func TestUnchangedStatusPreservesLastTransitionTime(t *testing.T) {
 	syncer := newTestManager(&fake.Clientset{})
 	podStatus := getReadyPodStatus()
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			UID:       "12345678",
 			Name:      "foo",
 			Namespace: "new",

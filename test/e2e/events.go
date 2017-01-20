@@ -22,10 +22,10 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/util/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
 
@@ -44,7 +44,7 @@ var _ = framework.KubeDescribe("Events", func() {
 		name := "send-events-" + string(uuid.NewUUID())
 		value := strconv.Itoa(time.Now().Nanosecond())
 		pod := &v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 				Labels: map[string]string{
 					"name": "foo",

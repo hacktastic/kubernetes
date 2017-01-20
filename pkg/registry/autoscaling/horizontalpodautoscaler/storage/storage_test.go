@@ -19,14 +19,15 @@ package storage
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	// Ensure that autoscaling/v1 package is initialized.
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/kubernetes/pkg/apis/autoscaling/v1"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/registry/generic"
+	"k8s.io/kubernetes/pkg/genericapiserver/registry/generic"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 	etcdtesting "k8s.io/kubernetes/pkg/storage/etcd/testing"
 )
@@ -46,7 +47,7 @@ func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) 
 func validNewHorizontalPodAutoscaler(name string) *autoscaling.HorizontalPodAutoscaler {
 	cpu := int32(70)
 	return &autoscaling.HorizontalPodAutoscaler{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: api.NamespaceDefault,
 		},
@@ -67,7 +68,7 @@ func TestCreate(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	test := registrytest.New(t, storage.Store)
 	autoscaler := validNewHorizontalPodAutoscaler("foo")
-	autoscaler.ObjectMeta = api.ObjectMeta{}
+	autoscaler.ObjectMeta = metav1.ObjectMeta{}
 	test.TestCreate(
 		// valid
 		autoscaler,

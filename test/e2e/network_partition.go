@@ -22,6 +22,7 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -30,7 +31,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
 
@@ -93,7 +93,7 @@ func expectNodeReadiness(isReady bool, newNode chan *v1.Node) {
 
 func podOnNode(podName, nodeName string, image string) *v1.Pod {
 	return &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
 			Labels: map[string]string{
 				"name": podName,

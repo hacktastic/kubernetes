@@ -19,14 +19,15 @@ package storage
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	// Ensure that extensions/v1beta1 package is initialized.
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/registry/generic"
+	"k8s.io/kubernetes/pkg/genericapiserver/registry/generic"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 	etcdtesting "k8s.io/kubernetes/pkg/storage/etcd/testing"
 )
@@ -39,7 +40,7 @@ func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 
 func validNewThirdPartyResourceData(name string) *extensions.ThirdPartyResourceData {
 	return &extensions.ThirdPartyResourceData{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: api.NamespaceDefault,
 		},
@@ -53,7 +54,7 @@ func TestCreate(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	test := registrytest.New(t, storage.Store)
 	rsrc := validNewThirdPartyResourceData("foo")
-	rsrc.ObjectMeta = api.ObjectMeta{}
+	rsrc.ObjectMeta = metav1.ObjectMeta{}
 	test.TestCreate(
 		// valid
 		rsrc,

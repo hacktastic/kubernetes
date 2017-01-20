@@ -437,6 +437,7 @@ var map_EnvFromSource = map[string]string{
 	"":             "EnvFromSource represents the source of a set of ConfigMaps",
 	"prefix":       "An optional identifer to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.",
 	"configMapRef": "The ConfigMap to select from",
+	"secretRef":    "The Secret to select from",
 }
 
 func (EnvFromSource) SwaggerDoc() map[string]string {
@@ -964,7 +965,7 @@ func (ObjectFieldSelector) SwaggerDoc() map[string]string {
 }
 
 var map_ObjectMeta = map[string]string{
-	"":                           "ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.",
+	"":                           "ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create. DEPRECATED: Use k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta instead - this type will be removed soon.",
 	"name":                       "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names",
 	"generateName":               "GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.\n\nIf this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).\n\nApplied only if Name is not specified. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#idempotency",
 	"namespace":                  "Namespace defines the space within each name must be unique. An empty namespace is equivalent to the \"default\" namespace, but \"default\" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.\n\nMust be a DNS_LABEL. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/namespaces",
@@ -1294,6 +1295,7 @@ var map_PodSpec = map[string]string{
 	"hostname":                      "Specifies the hostname of the Pod If not specified, the pod's hostname will be set to a system-defined value.",
 	"subdomain":                     "If specified, the fully qualified Pod hostname will be \"<hostname>.<subdomain>.<pod namespace>.svc.<cluster domain>\". If not specified, the pod will not have a domainname at all.",
 	"affinity":                      "If specified, the pod's scheduling constraints",
+	"schedulername":                 "If specified, the pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.",
 }
 
 func (PodSpec) SwaggerDoc() map[string]string {
@@ -1585,6 +1587,14 @@ var map_Secret = map[string]string{
 
 func (Secret) SwaggerDoc() map[string]string {
 	return map_Secret
+}
+
+var map_SecretEnvSource = map[string]string{
+	"": "SecretEnvSource selects a Secret to populate the environment variables with.\n\nThe contents of the target Secret's Data field will represent the key-value pairs as environment variables.",
+}
+
+func (SecretEnvSource) SwaggerDoc() map[string]string {
+	return map_SecretEnvSource
 }
 
 var map_SecretKeySelector = map[string]string{

@@ -47,9 +47,7 @@ go_library(
         "//pkg/kubelet/util/format:go_default_library",
         "//pkg/security/apparmor:go_default_library",
         "//pkg/securitycontext:go_default_library",
-        "//pkg/util/clock:go_default_library",
         "//pkg/util/exec:go_default_library",
-        "//pkg/util/flowcontrol:go_default_library",
         "//pkg/util/oom:go_default_library",
         "//pkg/util/procfs:go_default_library",
         "//pkg/util/selinux:go_default_library",
@@ -76,6 +74,8 @@ go_library(
         "//vendor:k8s.io/apimachinery/pkg/util/errors",
         "//vendor:k8s.io/apimachinery/pkg/util/runtime",
         "//vendor:k8s.io/apimachinery/pkg/util/sets",
+        "//vendor:k8s.io/client-go/pkg/util/clock",
+        "//vendor:k8s.io/client-go/pkg/util/flowcontrol",
     ],
 )
 
@@ -116,9 +116,7 @@ go_test(
         "//pkg/kubelet/types:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
         "//pkg/security/apparmor:go_default_library",
-        "//pkg/util/clock:go_default_library",
         "//pkg/util/exec:go_default_library",
-        "//pkg/util/flowcontrol:go_default_library",
         "//pkg/util/hash:go_default_library",
         "//pkg/util/intstr:go_default_library",
         "//pkg/util/strings:go_default_library",
@@ -130,9 +128,12 @@ go_test(
         "//vendor:github.com/golang/mock/gomock",
         "//vendor:github.com/google/cadvisor/info/v1",
         "//vendor:github.com/stretchr/testify/assert",
+        "//vendor:k8s.io/apimachinery/pkg/apis/meta/v1",
         "//vendor:k8s.io/apimachinery/pkg/runtime",
         "//vendor:k8s.io/apimachinery/pkg/types",
         "//vendor:k8s.io/apimachinery/pkg/util/sets",
+        "//vendor:k8s.io/client-go/pkg/util/clock",
+        "//vendor:k8s.io/client-go/pkg/util/flowcontrol",
     ],
 )
 

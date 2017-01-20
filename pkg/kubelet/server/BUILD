@@ -44,8 +44,8 @@ go_library(
         "//vendor:k8s.io/apiserver/pkg/authentication/authenticator",
         "//vendor:k8s.io/apiserver/pkg/authentication/user",
         "//vendor:k8s.io/apiserver/pkg/authorization/authorizer",
-        "//vendor:k8s.io/apiserver/pkg/healthz",
-        "//vendor:k8s.io/apiserver/pkg/httplog",
+        "//vendor:k8s.io/apiserver/pkg/server/healthz",
+        "//vendor:k8s.io/apiserver/pkg/server/httplog",
         "//vendor:k8s.io/apiserver/pkg/util/flushwriter",
     ],
 )
@@ -77,6 +77,7 @@ go_test(
         "//vendor:github.com/stretchr/testify/assert",
         "//vendor:github.com/stretchr/testify/require",
         "//vendor:k8s.io/apimachinery/pkg/api/errors",
+        "//vendor:k8s.io/apimachinery/pkg/apis/meta/v1",
         "//vendor:k8s.io/apimachinery/pkg/types",
         "//vendor:k8s.io/apimachinery/pkg/util/sets",
         "//vendor:k8s.io/apiserver/pkg/authentication/user",

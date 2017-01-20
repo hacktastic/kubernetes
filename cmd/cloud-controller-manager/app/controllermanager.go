@@ -25,8 +25,9 @@ import (
 	"strconv"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/healthz"
+	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/kubernetes/cmd/cloud-controller-manager/app/options"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
@@ -158,7 +159,7 @@ func Run(s *options.CloudControllerManagerServer, cloud cloudprovider.Interface)
 
 	// Lock required for leader election
 	rl := resourcelock.EndpointsLock{
-		EndpointsMeta: v1.ObjectMeta{
+		EndpointsMeta: metav1.ObjectMeta{
 			Namespace: "kube-system",
 			Name:      "cloud-controller-manager",
 		},

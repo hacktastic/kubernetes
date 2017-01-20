@@ -23,10 +23,10 @@ package api
 import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
+	fields "k8s.io/apimachinery/pkg/fields"
 	labels "k8s.io/apimachinery/pkg/labels"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
-	fields "k8s.io/kubernetes/pkg/fields"
 	reflect "reflect"
 )
 
@@ -175,6 +175,7 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_ResourceRequirements, InType: reflect.TypeOf(&ResourceRequirements{})},
 		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_SELinuxOptions, InType: reflect.TypeOf(&SELinuxOptions{})},
 		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_Secret, InType: reflect.TypeOf(&Secret{})},
+		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_SecretEnvSource, InType: reflect.TypeOf(&SecretEnvSource{})},
 		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_SecretKeySelector, InType: reflect.TypeOf(&SecretKeySelector{})},
 		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_SecretList, InType: reflect.TypeOf(&SecretList{})},
 		conversion.GeneratedDeepCopyFunc{Fn: DeepCopy_api_SecretVolumeSource, InType: reflect.TypeOf(&SecretVolumeSource{})},
@@ -304,8 +305,10 @@ func DeepCopy_api_Binding(in interface{}, out interface{}, c *conversion.Cloner)
 		in := in.(*Binding)
 		out := out.(*Binding)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		return nil
 	}
@@ -376,8 +379,10 @@ func DeepCopy_api_ComponentStatus(in interface{}, out interface{}, c *conversion
 		in := in.(*ComponentStatus)
 		out := out.(*ComponentStatus)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if in.Conditions != nil {
 			in, out := &in.Conditions, &out.Conditions
@@ -413,8 +418,10 @@ func DeepCopy_api_ConfigMap(in interface{}, out interface{}, c *conversion.Clone
 		in := in.(*ConfigMap)
 		out := out.(*ConfigMap)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if in.Data != nil {
 			in, out := &in.Data, &out.Data
@@ -849,8 +856,10 @@ func DeepCopy_api_Endpoints(in interface{}, out interface{}, c *conversion.Clone
 		in := in.(*Endpoints)
 		out := out.(*Endpoints)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if in.Subsets != nil {
 			in, out := &in.Subsets, &out.Subsets
@@ -891,6 +900,11 @@ func DeepCopy_api_EnvFromSource(in interface{}, out interface{}, c *conversion.C
 		if in.ConfigMapRef != nil {
 			in, out := &in.ConfigMapRef, &out.ConfigMapRef
 			*out = new(ConfigMapEnvSource)
+			**out = **in
+		}
+		if in.SecretRef != nil {
+			in, out := &in.SecretRef, &out.SecretRef
+			*out = new(SecretEnvSource)
 			**out = **in
 		}
 		return nil
@@ -949,8 +963,10 @@ func DeepCopy_api_Event(in interface{}, out interface{}, c *conversion.Cloner) e
 		in := in.(*Event)
 		out := out.(*Event)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		out.FirstTimestamp = in.FirstTimestamp.DeepCopy()
 		out.LastTimestamp = in.LastTimestamp.DeepCopy()
@@ -1188,8 +1204,10 @@ func DeepCopy_api_LimitRange(in interface{}, out interface{}, c *conversion.Clon
 		in := in.(*LimitRange)
 		out := out.(*LimitRange)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_LimitRangeSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -1376,8 +1394,10 @@ func DeepCopy_api_Namespace(in interface{}, out interface{}, c *conversion.Clone
 		in := in.(*Namespace)
 		out := out.(*Namespace)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_NamespaceSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -1434,8 +1454,10 @@ func DeepCopy_api_Node(in interface{}, out interface{}, c *conversion.Cloner) er
 		in := in.(*Node)
 		out := out.(*Node)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_NodeStatus(&in.Status, &out.Status, c); err != nil {
 			return err
@@ -1744,8 +1766,10 @@ func DeepCopy_api_PersistentVolume(in interface{}, out interface{}, c *conversio
 		in := in.(*PersistentVolume)
 		out := out.(*PersistentVolume)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_PersistentVolumeSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -1759,8 +1783,10 @@ func DeepCopy_api_PersistentVolumeClaim(in interface{}, out interface{}, c *conv
 		in := in.(*PersistentVolumeClaim)
 		out := out.(*PersistentVolumeClaim)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_PersistentVolumeClaimSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -2025,8 +2051,10 @@ func DeepCopy_api_Pod(in interface{}, out interface{}, c *conversion.Cloner) err
 		in := in.(*Pod)
 		out := out.(*Pod)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_PodSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -2375,8 +2403,10 @@ func DeepCopy_api_PodStatusResult(in interface{}, out interface{}, c *conversion
 		in := in.(*PodStatusResult)
 		out := out.(*PodStatusResult)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_PodStatus(&in.Status, &out.Status, c); err != nil {
 			return err
@@ -2390,8 +2420,10 @@ func DeepCopy_api_PodTemplate(in interface{}, out interface{}, c *conversion.Clo
 		in := in.(*PodTemplate)
 		out := out.(*PodTemplate)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_PodTemplateSpec(&in.Template, &out.Template, c); err != nil {
 			return err
@@ -2423,8 +2455,10 @@ func DeepCopy_api_PodTemplateSpec(in interface{}, out interface{}, c *conversion
 		in := in.(*PodTemplateSpec)
 		out := out.(*PodTemplateSpec)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_PodSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -2517,8 +2551,10 @@ func DeepCopy_api_RangeAllocation(in interface{}, out interface{}, c *conversion
 		in := in.(*RangeAllocation)
 		out := out.(*RangeAllocation)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if in.Data != nil {
 			in, out := &in.Data, &out.Data
@@ -2534,8 +2570,10 @@ func DeepCopy_api_ReplicationController(in interface{}, out interface{}, c *conv
 		in := in.(*ReplicationController)
 		out := out.(*ReplicationController)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_ReplicationControllerSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -2631,8 +2669,10 @@ func DeepCopy_api_ResourceQuota(in interface{}, out interface{}, c *conversion.C
 		in := in.(*ResourceQuota)
 		out := out.(*ResourceQuota)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_ResourceQuotaSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -2745,8 +2785,10 @@ func DeepCopy_api_Secret(in interface{}, out interface{}, c *conversion.Cloner) 
 		in := in.(*Secret)
 		out := out.(*Secret)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if in.Data != nil {
 			in, out := &in.Data, &out.Data
@@ -2759,6 +2801,15 @@ func DeepCopy_api_Secret(in interface{}, out interface{}, c *conversion.Cloner) 
 				}
 			}
 		}
+		return nil
+	}
+}
+
+func DeepCopy_api_SecretEnvSource(in interface{}, out interface{}, c *conversion.Cloner) error {
+	{
+		in := in.(*SecretEnvSource)
+		out := out.(*SecretEnvSource)
+		*out = *in
 		return nil
 	}
 }
@@ -2868,8 +2919,10 @@ func DeepCopy_api_Service(in interface{}, out interface{}, c *conversion.Cloner)
 		in := in.(*Service)
 		out := out.(*Service)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if err := DeepCopy_api_ServiceSpec(&in.Spec, &out.Spec, c); err != nil {
 			return err
@@ -2886,8 +2939,10 @@ func DeepCopy_api_ServiceAccount(in interface{}, out interface{}, c *conversion.
 		in := in.(*ServiceAccount)
 		out := out.(*ServiceAccount)
 		*out = *in
-		if err := DeepCopy_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		if newVal, err := c.DeepCopy(&in.ObjectMeta); err != nil {
 			return err
+		} else {
+			out.ObjectMeta = *newVal.(*v1.ObjectMeta)
 		}
 		if in.Secrets != nil {
 			in, out := &in.Secrets, &out.Secrets

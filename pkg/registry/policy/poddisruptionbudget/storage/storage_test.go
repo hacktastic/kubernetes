@@ -20,13 +20,13 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	genericapirequest "k8s.io/apiserver/pkg/request"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/policy"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/genericapiserver/api/rest"
-	"k8s.io/kubernetes/pkg/registry/generic"
+	"k8s.io/kubernetes/pkg/genericapiserver/registry/generic"
+	"k8s.io/kubernetes/pkg/genericapiserver/registry/rest"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 	etcdtesting "k8s.io/kubernetes/pkg/storage/etcd/testing"
 	"k8s.io/kubernetes/pkg/util/intstr"
@@ -52,7 +52,7 @@ func createPodDisruptionBudget(storage *REST, pdb policy.PodDisruptionBudget, t 
 
 func validNewPodDisruptionBudget() *policy.PodDisruptionBudget {
 	return &policy.PodDisruptionBudget{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: api.NamespaceDefault,
 			Labels:    map[string]string{"a": "b"},
@@ -71,7 +71,7 @@ func TestCreate(t *testing.T) {
 	defer storage.Store.DestroyFunc()
 	test := registrytest.New(t, storage.Store)
 	pdb := validNewPodDisruptionBudget()
-	pdb.ObjectMeta = api.ObjectMeta{}
+	pdb.ObjectMeta = metav1.ObjectMeta{}
 	test.TestCreate(
 		// valid
 		pdb,

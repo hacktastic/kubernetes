@@ -22,11 +22,11 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/test/e2e/framework"
 
@@ -256,7 +256,7 @@ func (t *dnsConfigMapTest) createUtilPod() {
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Pod",
 		},
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace:    t.f.Namespace.Name,
 			Labels:       map[string]string{"app": "e2e-dns-configmap"},
 			GenerateName: "e2e-dns-configmap-",
@@ -285,7 +285,7 @@ func (t *dnsConfigMapTest) createUtilPod() {
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Service",
 		},
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace: t.f.Namespace.Name,
 			Name:      "e2e-dns-configmap",
 		},

@@ -42,12 +42,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/pkg/util/clock"
+	"k8s.io/client-go/pkg/util/flowcontrol"
+	restclientwatch "k8s.io/client-go/rest/watch"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/v1"
-	restclientwatch "k8s.io/kubernetes/pkg/client/restclient/watch"
-	"k8s.io/kubernetes/pkg/util/clock"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/util/httpstream"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	utiltesting "k8s.io/kubernetes/pkg/util/testing"
@@ -868,6 +868,7 @@ func TestRequestStream(t *testing.T) {
 	testCases := []struct {
 		Request *Request
 		Err     bool
+		ErrFn   func(error) bool
 	}{
 		{
 			Request: &Request{err: errors.New("bail")},
@@ -903,6 +904,26 @@ func TestRequestStream(t *testing.T) {
 			},
 			Err: true,
 		},
+		{
+			Request: &Request{
+				client: clientFunc(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusBadRequest,
+						Body:       ioutil.NopCloser(bytes.NewReader([]byte(`{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"a container name must be specified for pod kube-dns-v20-mz5cv, choose one of: [kubedns dnsmasq healthz]","reason":"BadRequest","code":400}`))),
+					}, nil
+				}),
+				content:     defaultContentConfig(),
+				serializers: defaultSerializers(),
+				baseURL:     &url.URL{},
+			},
+			Err: true,
+			ErrFn: func(err error) bool {
+				if err.Error() == "a container name must be specified for pod kube-dns-v20-mz5cv, choose one of: [kubedns dnsmasq healthz]" {
+					return true
+				}
+				return false
+			},
+		},
 	}
 	for i, testCase := range testCases {
 		testCase.Request.backoffMgr = &NoBackoff{}
@@ -913,6 +934,12 @@ func TestRequestStream(t *testing.T) {
 		}
 		if hasErr && body != nil {
 			t.Errorf("%d: body should be nil when error is returned", i)
+		}
+
+		if hasErr {
+			if testCase.ErrFn != nil && !testCase.ErrFn(err) {
+				t.Errorf("unexpected error: %v", err)
+			}
 		}
 	}
 }
@@ -1218,7 +1245,7 @@ func BenchmarkCheckRetryClosesBody(b *testing.B) {
 }
 
 func TestDoRequestNewWayReader(t *testing.T) {
-	reqObj := &api.Pod{ObjectMeta: api.ObjectMeta{Name: "foo"}}
+	reqObj := &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
 	reqBodyExpected, _ := runtime.Encode(testapi.Default.Codec(), reqObj)
 	expectedObj := &api.Service{Spec: api.ServiceSpec{Ports: []api.ServicePort{{
 		Protocol:   "TCP",
@@ -1258,7 +1285,7 @@ func TestDoRequestNewWayReader(t *testing.T) {
 }
 
 func TestDoRequestNewWayObj(t *testing.T) {
-	reqObj := &api.Pod{ObjectMeta: api.ObjectMeta{Name: "foo"}}
+	reqObj := &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
 	reqBodyExpected, _ := runtime.Encode(testapi.Default.Codec(), reqObj)
 	expectedObj := &api.Service{Spec: api.ServiceSpec{Ports: []api.ServicePort{{
 		Protocol:   "TCP",
@@ -1298,7 +1325,7 @@ func TestDoRequestNewWayObj(t *testing.T) {
 }
 
 func TestDoRequestNewWayFile(t *testing.T) {
-	reqObj := &api.Pod{ObjectMeta: api.ObjectMeta{Name: "foo"}}
+	reqObj := &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
 	reqBodyExpected, err := runtime.Encode(testapi.Default.Codec(), reqObj)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -1355,7 +1382,7 @@ func TestDoRequestNewWayFile(t *testing.T) {
 }
 
 func TestWasCreated(t *testing.T) {
-	reqObj := &api.Pod{ObjectMeta: api.ObjectMeta{Name: "foo"}}
+	reqObj := &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
 	reqBodyExpected, err := runtime.Encode(testapi.Default.Codec(), reqObj)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -1492,7 +1519,7 @@ func TestUnacceptableParamNames(t *testing.T) {
 func TestBody(t *testing.T) {
 	const data = "test payload"
 
-	obj := &api.Pod{ObjectMeta: api.ObjectMeta{Name: "foo"}}
+	obj := &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
 	bodyExpected, _ := runtime.Encode(testapi.Default.Codec(), obj)
 
 	f, err := ioutil.TempFile("", "test_body")
@@ -1556,9 +1583,9 @@ func TestWatch(t *testing.T) {
 		t   watch.EventType
 		obj runtime.Object
 	}{
-		{watch.Added, &api.Pod{ObjectMeta: api.ObjectMeta{Name: "first"}}},
-		{watch.Modified, &api.Pod{ObjectMeta: api.ObjectMeta{Name: "second"}}},
-		{watch.Deleted, &api.Pod{ObjectMeta: api.ObjectMeta{Name: "last"}}},
+		{watch.Added, &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "first"}}},
+		{watch.Modified, &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "second"}}},
+		{watch.Deleted, &api.Pod{ObjectMeta: metav1.ObjectMeta{Name: "last"}}},
 	}
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

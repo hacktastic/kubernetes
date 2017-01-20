@@ -21,7 +21,6 @@ go_library(
         "//pkg/client/cache:go_default_library",
         "//pkg/client/clientset_generated/clientset:go_default_library",
         "//pkg/controller/informers:go_default_library",
-        "//pkg/fields:go_default_library",
         "//plugin/pkg/scheduler:go_default_library",
         "//plugin/pkg/scheduler/algorithm:go_default_library",
         "//plugin/pkg/scheduler/algorithm/predicates:go_default_library",
@@ -29,14 +28,16 @@ go_library(
         "//plugin/pkg/scheduler/api:go_default_library",
         "//plugin/pkg/scheduler/api/validation:go_default_library",
         "//plugin/pkg/scheduler/schedulercache:go_default_library",
+        "//plugin/pkg/scheduler/util:go_default_library",
         "//vendor:github.com/golang/glog",
         "//vendor:k8s.io/apimachinery/pkg/api/errors",
         "//vendor:k8s.io/apimachinery/pkg/apis/meta/v1",
+        "//vendor:k8s.io/apimachinery/pkg/fields",
         "//vendor:k8s.io/apimachinery/pkg/types",
         "//vendor:k8s.io/apimachinery/pkg/util/runtime",
         "//vendor:k8s.io/apimachinery/pkg/util/sets",
         "//vendor:k8s.io/apimachinery/pkg/util/validation",
-        "//vendor:k8s.io/apiserver/pkg/request",
+        "//vendor:k8s.io/apiserver/pkg/endpoints/request",
     ],
 )
 
@@ -61,8 +62,9 @@ go_test(
         "//plugin/pkg/scheduler/api:go_default_library",
         "//plugin/pkg/scheduler/api/latest:go_default_library",
         "//plugin/pkg/scheduler/schedulercache:go_default_library",
+        "//plugin/pkg/scheduler/util:go_default_library",
+        "//vendor:k8s.io/apimachinery/pkg/apis/meta/v1",
         "//vendor:k8s.io/apimachinery/pkg/runtime",
-        "//vendor:k8s.io/apimachinery/pkg/types",
     ],
 )
 

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,7 +40,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/fields"
 	utiluuid "k8s.io/kubernetes/pkg/util/uuid"
 	"k8s.io/kubernetes/pkg/util/workqueue"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -785,7 +785,7 @@ func createRunningPodFromRC(wg *sync.WaitGroup, c clientset.Interface, name, ns,
 		"name": name,
 	}
 	rc := &v1.ReplicationController{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
@@ -793,7 +793,7 @@ func createRunningPodFromRC(wg *sync.WaitGroup, c clientset.Interface, name, ns,
 			Replicas: func(i int) *int32 { x := int32(i); return &x }(1),
 			Selector: labels,
 			Template: &v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{

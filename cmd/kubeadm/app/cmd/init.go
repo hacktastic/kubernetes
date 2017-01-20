@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/ioutil"
 	"path"
-	"strconv"
 
 	"github.com/renstrom/dedent"
 	"github.com/spf13/cobra"
@@ -32,12 +31,13 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/cmd/flags"
 	"k8s.io/kubernetes/cmd/kubeadm/app/discovery"
 	kubemaster "k8s.io/kubernetes/cmd/kubeadm/app/master"
+	"k8s.io/kubernetes/cmd/kubeadm/app/phases/apiconfig"
 
 	certphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/certs"
 	kubeconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/kubeconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	netutil "k8s.io/apimachinery/pkg/util/net"
+
 	"k8s.io/kubernetes/cmd/kubeadm/app/preflight"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
 	"k8s.io/kubernetes/pkg/api"
@@ -144,13 +144,10 @@ func NewInit(cfgPath string, cfg *kubeadmapi.MasterConfiguration, skipPreFlight 
 		}
 	}
 
-	// Auto-detect the IP
-	if len(cfg.API.AdvertiseAddresses) == 0 {
-		ip, err := netutil.ChooseHostInterface()
-		if err != nil {
-			return nil, err
-		}
-		cfg.API.AdvertiseAddresses = []string{ip.String()}
+	// Set defaults dynamically that the API group defaulting can't (by fetching information from the internet, looking up network interfaces, etc.)
+	err := setInitDynamicDefaults(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	if !skipPreFlight {
@@ -172,24 +169,6 @@ func NewInit(cfgPath string, cfg *kubeadmapi.MasterConfiguration, skipPreFlight 
 	// Try to start the kubelet service in case it's inactive
 	preflight.TryStartKubelet()
 
-	// validate version argument
-	ver, err := kubeadmutil.KubernetesReleaseVersion(cfg.KubernetesVersion)
-	if err != nil {
-		if cfg.KubernetesVersion != kubeadmapiext.DefaultKubernetesVersion {
-			return nil, err
-		} else {
-			ver = kubeadmapiext.DefaultKubernetesFallbackVersion
-		}
-	}
-	cfg.KubernetesVersion = ver
-	fmt.Println("[init] Using Kubernetes version:", ver)
-
-	// Warn about the limitations with the current cloudprovider solution.
-	if cfg.CloudProvider != "" {
-		fmt.Println("WARNING: For cloudprovider integrations to work --cloud-provider must be set for all kubelets in the cluster.")
-		fmt.Println("\t(/etc/systemd/system/kubelet.service.d/10-kubeadm.conf should be edited for this purpose)")
-	}
-
 	return &Init{cfg: cfg}, nil
 }
 
@@ -206,27 +185,6 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
-	// Exception:
-	if i.cfg.Discovery.Token != nil {
-		// Validate token
-		if valid, err := kubeadmutil.ValidateToken(i.cfg.Discovery.Token); valid == false {
-			return err
-		}
-
-		// Make sure there is at least one address
-		if len(i.cfg.Discovery.Token.Addresses) == 0 {
-			ip, err := netutil.ChooseHostInterface()
-			if err != nil {
-				return err
-			}
-			i.cfg.Discovery.Token.Addresses = []string{ip.String() + ":" + strconv.Itoa(kubeadmapiext.DefaultDiscoveryBindPort)}
-		}
-
-		if err := kubemaster.CreateTokenAuthFile(kubeadmutil.BearerToken(i.cfg.Discovery.Token)); err != nil {
-			return err
-		}
-	}
-
 	// PHASE 2: Generate kubeconfig files for the admin and the kubelet
 
 	// TODO this is not great, but there is only one address we can use here
@@ -238,6 +196,14 @@ func (i *Init) Run(out io.Writer) error {
 		return err
 	}
 
+	// TODO: It's not great to have an exception for token here, but necessary because the apiserver doesn't handle this properly in the API yet
+	// but relies on files on disk for now, which is daunting.
+	if i.cfg.Discovery.Token != nil {
+		if err := kubemaster.CreateTokenAuthFile(kubeadmutil.BearerToken(i.cfg.Discovery.Token)); err != nil {
+			return err
+		}
+	}
+
 	// Phase 3: Bootstrap the control plane
 	if err := kubemaster.WriteStaticPodManifests(i.cfg); err != nil {
 		return err
@@ -246,6 +212,24 @@ func (i *Init) Run(out io.Writer) error {
 	client, err := kubemaster.CreateClientAndWaitForAPI(path.Join(kubeadmapi.GlobalEnvParams.KubernetesDir, kubeconfigphase.AdminKubeConfigFileName))
 	if err != nil {
 		return err
+	}
+
+	if i.cfg.AuthorizationMode == "RBAC" {
+		err = apiconfig.CreateBootstrapRBACClusterRole(client)
+		if err != nil {
+			return err
+		}
+
+		err = apiconfig.CreateKubeDNSRBACClusterRole(client)
+		if err != nil {
+			return err
+		}
+
+		// TODO: remove this when https://github.com/kubernetes/kubeadm/issues/114 is fixed
+		err = apiconfig.CreateKubeProxyClusterRoleBinding(client)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := kubemaster.UpdateMasterRoleLabelsAndTaints(client, false); err != nil {

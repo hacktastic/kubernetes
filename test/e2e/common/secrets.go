@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/util/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -96,7 +97,7 @@ var _ = framework.KubeDescribe("Secrets", func() {
 		}
 
 		pod := &v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod-secrets-" + string(uuid.NewUUID()),
 			},
 			Spec: v1.PodSpec{
@@ -160,7 +161,7 @@ var _ = framework.KubeDescribe("Secrets", func() {
 		}
 
 		pod := &v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod-secrets-" + string(uuid.NewUUID()),
 			},
 			Spec: v1.PodSpec{
@@ -192,11 +193,65 @@ var _ = framework.KubeDescribe("Secrets", func() {
 			"SECRET_DATA=value-1",
 		})
 	})
+
+	It("should be consumable via the environment [Conformance]", func() {
+		name := "secret-test-" + string(uuid.NewUUID())
+		secret := newEnvFromSecret(f.Namespace.Name, name)
+		By(fmt.Sprintf("creating secret %v/%v", f.Namespace.Name, secret.Name))
+		var err error
+		if secret, err = f.ClientSet.Core().Secrets(f.Namespace.Name).Create(secret); err != nil {
+			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
+		}
+
+		pod := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod-configmaps-" + string(uuid.NewUUID()),
+			},
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Name:    "env-test",
+						Image:   "gcr.io/google_containers/busybox:1.24",
+						Command: []string{"sh", "-c", "env"},
+						EnvFrom: []v1.EnvFromSource{
+							{
+								SecretRef: &v1.SecretEnvSource{LocalObjectReference: v1.LocalObjectReference{Name: name}},
+							},
+							{
+								Prefix:    "p_",
+								SecretRef: &v1.SecretEnvSource{LocalObjectReference: v1.LocalObjectReference{Name: name}},
+							},
+						},
+					},
+				},
+				RestartPolicy: v1.RestartPolicyNever,
+			},
+		}
+
+		f.TestContainerOutput("consume secrets", pod, 0, []string{
+			"data_1=value-1", "data_2=value-2", "data_3=value-3",
+			"p_data_1=value-1", "p_data_2=value-2", "p_data_3=value-3",
+		})
+	})
 })
+
+func newEnvFromSecret(namespace, name string) *v1.Secret {
+	return &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Data: map[string][]byte{
+			"data_1": []byte("value-1\n"),
+			"data_2": []byte("value-2\n"),
+			"data_3": []byte("value-3\n"),
+		},
+	}
+}
 
 func secretForTest(namespace, name string) *v1.Secret {
 	return &v1.Secret{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
 		},
@@ -222,7 +277,7 @@ func doSecretE2EWithoutMapping(f *framework.Framework, defaultMode *int32, secre
 	}
 
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod-secrets-" + string(uuid.NewUUID()),
 			Namespace: f.Namespace.Name,
 		},
@@ -294,7 +349,7 @@ func doSecretE2EWithMapping(f *framework.Framework, mode *int32) {
 	}
 
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-secrets-" + string(uuid.NewUUID()),
 		},
 		Spec: v1.PodSpec{

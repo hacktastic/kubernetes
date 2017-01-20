@@ -52,11 +52,11 @@ import (
 	"k8s.io/kubernetes/pkg/api/annotations"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/v1"
-	rbacv1alpha1 "k8s.io/kubernetes/pkg/apis/rbac/v1alpha1"
+	rbacv1beta1 "k8s.io/kubernetes/pkg/apis/rbac/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/controller"
+	genericregistry "k8s.io/kubernetes/pkg/genericapiserver/registry/generic/registry"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	genericregistry "k8s.io/kubernetes/pkg/registry/generic/registry"
 	uexec "k8s.io/kubernetes/pkg/util/exec"
 	"k8s.io/kubernetes/pkg/util/uuid"
 	utilversion "k8s.io/kubernetes/pkg/util/version"
@@ -581,7 +581,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			By("adding rbac permissions")
 			// grant the view permission widely to allow inspection of the `invalid` namespace.
 			framework.BindClusterRole(f.ClientSet.Rbac(), "view", f.Namespace.Name,
-				rbacv1alpha1.Subject{Kind: rbacv1alpha1.ServiceAccountKind, Namespace: f.Namespace.Name, Name: "default"})
+				rbacv1beta1.Subject{Kind: rbacv1beta1.ServiceAccountKind, Namespace: f.Namespace.Name, Name: "default"})
 
 			err := framework.WaitForAuthorizationUpdate(f.ClientSet.Authorization(),
 				serviceaccount.MakeUsername(f.Namespace.Name, "default"),

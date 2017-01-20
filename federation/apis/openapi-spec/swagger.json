@@ -10101,6 +10101,10 @@
      "prefix": {
       "description": "An optional identifer to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.",
       "type": "string"
+     },
+     "secretRef": {
+      "description": "The Secret to select from",
+      "$ref": "#/definitions/v1.SecretEnvSource"
      }
     }
    },
@@ -11313,6 +11317,10 @@
       "description": "Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. More info: http://kubernetes.io/docs/user-guide/pod-states#restartpolicy",
       "type": "string"
      },
+     "schedulername": {
+      "description": "If specified, the pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.",
+      "type": "string"
+     },
      "securityContext": {
       "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
       "$ref": "#/definitions/v1.PodSecurityContext"
@@ -11590,6 +11598,15 @@
      },
      "type": {
       "description": "Used to facilitate programmatic handling of secret data.",
+      "type": "string"
+     }
+    }
+   },
+   "v1.SecretEnvSource": {
+    "description": "SecretEnvSource selects a Secret to populate the environment variables with.\n\nThe contents of the target Secret's Data field will represent the key-value pairs as environment variables.",
+    "properties": {
+     "name": {
+      "description": "Name of the referent. More info: http://kubernetes.io/docs/user-guide/identifiers#names",
       "type": "string"
      }
     }

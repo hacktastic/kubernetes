@@ -25,8 +25,10 @@ import (
 	"github.com/golang/glog"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/pkg/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/credentialprovider"
@@ -41,7 +43,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/cache"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
 	utilversion "k8s.io/kubernetes/pkg/util/version"
 )
 
@@ -824,7 +825,7 @@ func (m *kubeGenericRuntimeManager) GetPodStatus(uid kubetypes.UID, name, namesp
 	}
 
 	podFullName := format.Pod(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			UID:       uid,
