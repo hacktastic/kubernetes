@@ -528,45 +528,50 @@ func createNodeSecurityGroup(client *gophercloud.ServiceClient, nodeSecurityGrou
 //getStringFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
 func getStringFromServiceAnnotation(service *v1.Service, annotationKey string, defaultSetting string) string {
 	glog.V(4).Infof("getStringFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
-	setting := defaultSetting
-
-	if _setting, ok := service.Annotations[annotationKey]; ok {
+	if annotationValue, ok := service.Annotations[annotationKey]; ok {
 		//if there is an annotation for this setting, set the "setting" var to it
-		glog.V(4).Infof("Found a Service Annotation: %v = %v", annotationKey, _setting)
-		setting = _setting
-		return setting
+		glog.V(4).Infof("Found a Service Annotation: %v = %v", annotationKey, annotationValue)
+		return annotationValue
 	}
 	//if there is no annotation, set "settings" var to the value from cloud config
-	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, setting)
-	return setting
+	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, defaultSetting)
+	return defaultSetting
 }
 
 //getBoolFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
 func getBoolFromServiceAnnotation(service *v1.Service, annotationKey string, defaultSetting bool) bool {
-	// convert default bool setting to string
-	defaultSettingStr := strconv.FormatBool(defaultSetting)
-	// pass setting as string to getStringFromServiceAnnotation()
-	annotationSettingStr := getStringFromServiceAnnotation(service, annotationKey, defaultSettingStr)
-	// convert string back to bool
-	annotationSettingBool, err := strconv.ParseBool(annotationSettingStr)
-	if err != nil {
-		glog.Errorf("Encountered an invalid annotation setting: %v", annotationSettingStr)
+	glog.V(4).Infof("getBoolFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
+	if annotationValue, ok := service.Annotations[annotationKey]; ok {
+		//if there is an annotation for this setting, set the "setting" var to it
+		glog.V(4).Infof("Found a Service Annotation: %v = %v", annotationKey, annotationValue)
+		setting, err := strconv.ParseBool(annotationValue)
+		if err != nil {
+			glog.Errorf("Failed to convert annotation \"%v\" from string to bool. Falling back on default setting \"%v\" : %v", annotationValue, defaultSetting, err)
+			return defaultSetting
+		}
+		return setting
 	}
-	return annotationSettingBool
+	//if there is no annotation, set "settings" var to the value from cloud config
+	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, defaultSetting)
+	return defaultSetting
 }
 
 //getDurationFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
 func getDurationFromServiceAnnotation(service *v1.Service, annotationKey string, defaultSetting time.Duration) time.Duration {
-	// convert default time.Duration setting to string
-	defaultSettingStr := defaultSetting.String()
-	// pass setting as string to getStringFromServiceAnnotation()
-	annotationSettingStr := getStringFromServiceAnnotation(service, annotationKey, defaultSettingStr)
-	// convert string back to time.Duration
-	annotationSettingDuration, err := time.ParseDuration(annotationSettingStr)
-	if err != nil {
-		glog.Errorf("Failed to convert annotation %v from string to time.Duration: %v", annotationSettingStr, err)
+	glog.V(4).Infof("getBoolFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
+	if annotationValue, ok := service.Annotations[annotationKey]; ok {
+		//if there is an annotation for this setting, set the "setting" var to it
+		glog.V(4).Infof("Found a Service Annotation: %v = %v", annotationKey, annotationValue)
+		setting, err := time.ParseDuration(annotationValue)
+		if err != nil {
+			glog.Errorf("Failed to convert annotation \"%v\" from string to time.Duration. Falling back on default setting \"%v\" : %v", annotationValue, defaultSetting, err)
+			return defaultSetting
+		}
+		return setting
 	}
-	return annotationSettingDuration
+	//if there is no annotation, set "settings" var to the value from cloud config
+	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, defaultSetting)
+	return defaultSetting
 }
 
 func (lbaas *LbaasV2) createLoadBalancer(service *v1.Service, name string) (*loadbalancers.LoadBalancer, error) {
