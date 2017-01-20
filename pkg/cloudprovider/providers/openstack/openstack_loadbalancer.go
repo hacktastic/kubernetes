@@ -557,7 +557,7 @@ func getBoolFromServiceAnnotation(service *v1.Service, annotationKey string, def
 }
 
 //getDurationFromServiceAnnotation searches a given v1.Service for a specific annotationKey and either returns the annotation's value or a specified defaultSetting
-func getDurationFromServiceAnnotation(service *v1.Service, annotationKey string, defaultSetting time.Duration) time.Duration {
+func getDurationFromServiceAnnotation(service *v1.Service, annotationKey string, defaultSetting MyDuration) MyDuration {
 	glog.V(4).Infof("getBoolFromServiceAnnotation(%v, %v, %v)", service, annotationKey, defaultSetting)
 	if annotationValue, ok := service.Annotations[annotationKey]; ok {
 		//if there is an annotation for this setting, set the "setting" var to it
@@ -567,7 +567,7 @@ func getDurationFromServiceAnnotation(service *v1.Service, annotationKey string,
 			glog.Errorf("Failed to convert annotation \"%v\" from string to time.Duration. Falling back on default setting \"%v\" : %v", annotationValue, defaultSetting, err)
 			return defaultSetting
 		}
-		return setting
+		return MyDuration{setting}
 	}
 	//if there is no annotation, set "settings" var to the value from cloud config
 	glog.V(4).Infof("Could not find a Service Annotation; falling back on cloud-config setting: %v = %v", annotationKey, defaultSetting)
@@ -586,7 +586,7 @@ func (lbaas *LbaasV2) createLoadBalancer(service *v1.Service, name string) (*loa
 	}
 
 	// if this service has an annotation for provider, add that as Provider arg to the Loadbalancer options
-	createOpts.Provider = getStringFromServiceAnnotation(service, ServiceAnnotationLoadBalancerProvider, "")
+	createOpts.Provider = getStringFromServiceAnnotation(service, ServiceAnnotationLoadBalancerProvider, lbaas.opts.Provider)
 
 	// if this service has an annotation for subnet-id, add that as VipSubnetID arg the Loadbalancer options
 	createOpts.VipSubnetID = getStringFromServiceAnnotation(service, ServiceAnnotationLoadBalancerSubnetID, lbaas.opts.SubnetId)
@@ -669,12 +669,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 	}
 
 	// if this service has an annotation for ManageSecurityGroups, use that instead
-	manageSecurityGroupsBool := strconv.FormatBool(lbaas.opts.ManageSecurityGroups)
-	var manageSecurityGroupsStr string = getStringFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerManageSecurityGroups, manageSecurityGroupsBool)
-	manageSecurityGroups, err := strconv.ParseBool(manageSecurityGroupsStr)
-	if err != nil {
-		glog.Errorf("Encountered an invalid annotation setting for manageSecurityGroups: %v", manageSecurityGroups)
-	}
+	manageSecurityGroups := getBoolFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerManageSecurityGroups, lbaas.opts.ManageSecurityGroups)
 
 	if !service.IsAllowAll(sourceRanges) && !manageSecurityGroups {
 		return nil, fmt.Errorf("Source range restrictions are not supported for openstack load balancers without managing security groups")
@@ -814,35 +809,13 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 		monitorID := pool.MonitorID
 
 		// if this service has an annotation for CreateMonitor, use that instead
-		createMonitorBool := strconv.FormatBool(lbaas.opts.CreateMonitor)
-
-		var createMonitorStr string = getStringFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, createMonitorBool)
-		createMonitor, err := strconv.ParseBool(createMonitorStr)
-		if err != nil {
-			glog.Errorf("Encountered an invalid annotation setting for CreateMonitor %v: %v", createMonitorStr, err)
-		}
+		createMonitor := getBoolFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, lbaas.opts.CreateMonitor)
 
 		// if this service has an annotation for MonitorDelay, use that instead
-		monitorDelay := lbaas.opts.MonitorDelay.Seconds()
-
-		if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorDelay]; ok {
-			dur, err := time.ParseDuration(string(override))
-			if err != nil {
-				glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
-			}
-			monitorDelay = dur.Seconds()
-		}
+		monitorDelay := getDurationFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorDelay, lbaas.opts.MonitorDelay)
 
 		// if this service has an annotation for MonitorTimeout, use that instead
-		monitorTimeout := lbaas.opts.MonitorTimeout.Seconds()
-
-		if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorTimeout]; ok {
-			timeout, err := time.ParseDuration(string(override))
-			if err != nil {
-				glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
-			}
-			monitorTimeout = timeout.Seconds()
-		}
+		monitorTimeout := getDurationFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorTimeout, lbaas.opts.MonitorTimeout)
 
 		// if this service has an annotation for MonitorMaxRetries, use that instead
 		_monitorMaxRetries := getStringFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorMaxRetries, strconv.FormatUint(uint64(lbaas.opts.MonitorMaxRetries), 10))
@@ -856,8 +829,8 @@ func (lbaas *LbaasV2) EnsureLoadBalancer(clusterName string, apiService *v1.Serv
 			monitor, err := v2monitors.Create(lbaas.network, v2monitors.CreateOpts{
 				PoolID:     pool.ID,
 				Type:       string(port.Protocol),
-				Delay:      int(monitorDelay),
-				Timeout:    int(monitorTimeout),
+				Delay:      int(monitorDelay.Seconds()),
+				Timeout:    int(monitorTimeout.Seconds()),
 				MaxRetries: int(monitorMaxRetries),
 			}).Extract()
 			if err != nil {
@@ -1355,13 +1328,7 @@ func (lbaas *LbaasV2) EnsureLoadBalancerDeleted(clusterName string, service *v1.
 	// Delete the Security Group
 
 	// if this service has an annotation for ManageSecurityGroups, use that instead
-	manageSecurityGroupsBool := strconv.FormatBool(lbaas.opts.ManageSecurityGroups)
-
-	var manageSecurityGroupsStr string = getStringFromServiceAnnotation(service, ServiceAnnotationLoadBalancerManageSecurityGroups, manageSecurityGroupsBool)
-	manageSecurityGroups, err := strconv.ParseBool(manageSecurityGroupsStr)
-	if err != nil {
-		glog.Errorf("Encountered an invalid annotation setting for manageSecurityGroups: %v", manageSecurityGroups)
-	}
+	manageSecurityGroups := getBoolFromServiceAnnotation(service, ServiceAnnotationLoadBalancerManageSecurityGroups, lbaas.opts.ManageSecurityGroups)
 
 	if manageSecurityGroups {
 		// Generate Name
@@ -1510,35 +1477,13 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 	}
 
 	// if this service has an annotation for CreateMonitor, use that instead
-	createMonitorBool := strconv.FormatBool(lb.opts.CreateMonitor)
-
-	var createMonitorStr string = getStringFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, createMonitorBool)
-	createMonitor, err := strconv.ParseBool(createMonitorStr)
-	if err != nil {
-		glog.Errorf("Encountered an invalid annotation setting for CreateMonitor %v: %v", createMonitorStr, err)
-	}
+	createMonitor := getBoolFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerCreateMonitor, lb.opts.CreateMonitor)
 
 	// if this service has an annotation for MonitorDelay, use that instead
-	monitorDelay := lb.opts.MonitorDelay.Seconds()
-
-	if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorDelay]; ok {
-		dur, err := time.ParseDuration(string(override))
-		if err != nil {
-			glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
-		}
-		monitorDelay = dur.Seconds()
-	}
+	monitorDelay := getDurationFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorDelay, lb.opts.MonitorDelay)
 
 	// if this service has an annotation for MonitorTimeout, use that instead
-	monitorTimeout := lb.opts.MonitorTimeout.Seconds()
-
-	if override, ok := apiService.Annotations[ServiceAnnotationLoadBalancerMonitorTimeout]; ok {
-		timeout, err := time.ParseDuration(string(override))
-		if err != nil {
-			glog.Errorf("Failed to parse MonitorDelay Duration from service annotation: %v", err)
-		}
-		monitorTimeout = timeout.Seconds()
-	}
+	monitorTimeout := getDurationFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorTimeout, lb.opts.MonitorTimeout)
 
 	// if this service has an annotation for MonitorMaxRetries, use that instead
 	_monitorMaxRetries := getStringFromServiceAnnotation(apiService, ServiceAnnotationLoadBalancerMonitorMaxRetries, strconv.FormatUint(uint64(lb.opts.MonitorMaxRetries), 10))
@@ -1551,8 +1496,8 @@ func (lb *LbaasV1) EnsureLoadBalancer(clusterName string, apiService *v1.Service
 	if createMonitor {
 		mon, err = monitors.Create(lb.network, monitors.CreateOpts{
 			Type:       monitors.TypeTCP,
-			Delay:      int(monitorDelay),
-			Timeout:    int(monitorTimeout),
+			Delay:      int(monitorDelay.Seconds()),
+			Timeout:    int(monitorTimeout.Seconds()),
 			MaxRetries: int(monitorMaxRetries),
 		}).Extract()
 		if err != nil {
